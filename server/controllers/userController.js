@@ -2,7 +2,8 @@ import Job from "../models/Job.js"
 import JobApplication from "../models/JobApplication.js"
 import { badRequest, conflict, notFound } from "../utils/httpError.js"
 import * as v from "../utils/validate.js"
-import { isJobPublic } from "../services/jobs.js"
+import { COMPANY_PUBLIC_FIELDS, isJobPublic } from "../services/jobs.js"
+import SavedJob from "../models/SavedJob.js"
 import { isPdfBuffer } from "../config/multer.js"
 import { uploadResume } from "../services/storage.js"
 
@@ -88,4 +89,50 @@ export const updateUserResume = async (req, res) => {
     await req.user.save()
 
     res.json({ success: true, message: 'Resume updated', resume: url })
+}
+
+// ---------- Saved jobs ----------
+
+// List saved jobs; jobs that were deleted or are no longer public are flagged, not dropped,
+// so candidates understand why a bookmark stopped working.
+export const getSavedJobs = async (req, res) => {
+    const saved = await SavedJob.find({ userId: req.user._id })
+        .sort({ createdAt: -1 })
+        .populate({ path: 'jobId', populate: { path: 'companyId', select: `${COMPANY_PUBLIC_FIELDS} status` } })
+        .lean()
+
+    const savedJobs = await Promise.all(saved.map(async (s) => {
+        const available = !!s.jobId && await isJobPublic(s.jobId)
+        if (s.jobId?.companyId) delete s.jobId.companyId.status
+        const job = available || !s.jobId
+            ? s.jobId
+            : { _id: s.jobId._id, title: s.jobId.title, companyId: s.jobId.companyId ? { name: s.jobId.companyId.name, image: s.jobId.companyId.image } : null }
+        return { _id: s._id, savedAt: s.createdAt, available, job, jobId: s.jobId?._id ?? null }
+    }))
+
+    res.json({ success: true, savedJobs: savedJobs.filter((s) => s.jobId) })
+}
+
+// Idempotent: saving twice returns the existing bookmark
+export const saveJob = async (req, res) => {
+    const jobId = v.objectId(req.body.jobId, 'job id')
+
+    const job = await Job.findById(jobId)
+    if (!job || !(await isJobPublic(job))) {
+        throw notFound('This job is no longer available')
+    }
+
+    const saved = await SavedJob.findOneAndUpdate(
+        { userId: req.user._id, jobId },
+        { $setOnInsert: { userId: req.user._id, jobId } },
+        { upsert: true, new: true }
+    )
+
+    res.status(201).json({ success: true, message: 'Job saved', savedJob: { _id: saved._id, jobId } })
+}
+
+export const unsaveJob = async (req, res) => {
+    const jobId = v.objectId(req.params.jobId, 'job id')
+    await SavedJob.deleteOne({ userId: req.user._id, jobId })
+    res.json({ success: true, message: 'Removed from saved jobs' })
 }

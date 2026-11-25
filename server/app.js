@@ -10,6 +10,7 @@ import { clerkWebhooks } from './controllers/webhooks.js'
 import { createCompanyRouter } from './routes/companyRoutes.js'
 import jobRoutes from './routes/jobRoutes.js'
 import userRoutes from './routes/userRoutes.js'
+import adminRoutes from './routes/adminRoutes.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { asyncHandler } from './utils/httpError.js'
 
@@ -113,6 +114,7 @@ export const createApp = (options = {}) => {
 
     app.use('/api', dbReady)
     app.use('/api/users', clerkAuth)
+    app.use('/api/admin', clerkAuth)
 
     const loginLimiter = limiter(rateLimits.login ?? 10, 15 * 60 * 1000, 'Too many login attempts. Please wait 15 minutes and try again.')
     const registerLimiter = limiter(rateLimits.register ?? 5, 60 * 60 * 1000, 'Too many sign-up attempts. Please try again later.')
@@ -120,6 +122,7 @@ export const createApp = (options = {}) => {
     app.use('/api/company', createCompanyRouter({ loginLimiter, registerLimiter }))
     app.use('/api/jobs', jobRoutes)
     app.use('/api/users', userRoutes)
+    app.use('/api/admin', adminRoutes)
 
     if (sentryEnabled) Sentry.setupExpressErrorHandler(app)
 

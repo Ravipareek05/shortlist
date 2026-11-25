@@ -1,5 +1,5 @@
 import express from 'express'
-import { applyForJob, getUserData, getUserJobApplications, updateUserResume } from '../controllers/userController.js'
+import { applyForJob, getSavedJobs, getUserData, getUserJobApplications, saveJob, unsaveJob, updateUserResume } from '../controllers/userController.js'
 import { resumeUpload } from '../config/multer.js'
 import { requireActiveUser, requireUser } from '../middleware/authMiddleware.js'
 import { asyncHandler } from '../utils/httpError.js'
@@ -21,5 +21,10 @@ router.get('/applications', h(getUserJobApplications))
 
 // Update user profile (resume)
 router.post('/update-resume', requireActiveUser, resumeUpload.single('resume'), h(updateUserResume))
+
+// Saved jobs
+router.get('/saved-jobs', h(getSavedJobs))
+router.post('/saved-jobs', requireActiveUser, h(saveJob))
+router.delete('/saved-jobs/:jobId', requireActiveUser, h(unsaveJob))
 
 export default router;

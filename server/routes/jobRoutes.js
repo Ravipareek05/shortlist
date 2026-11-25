@@ -1,11 +1,14 @@
 import express from 'express'
-import { getJobById, getJobs } from '../controllers/jobController.js';
+import { getJobById, getJobs, getJobsMeta } from '../controllers/jobController.js';
 import { asyncHandler } from '../utils/httpError.js';
 
 const router = express.Router()
 
-// Route to get all jobs data
+// Search jobs (filters, sorting, pagination)
 router.get('/', asyncHandler(getJobs))
+
+// Platform stats, filter options, featured companies
+router.get('/meta', asyncHandler(getJobsMeta))
 
 // Route to get a single job by ID
 router.get('/:id', asyncHandler(getJobById))

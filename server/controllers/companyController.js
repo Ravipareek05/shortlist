@@ -9,6 +9,7 @@ import * as v from "../utils/validate.js";
 import { sanitizeDescription, htmlToText } from "../utils/sanitize.js";
 import { isImageBuffer } from "../config/multer.js";
 import { uploadLogo } from "../services/storage.js";
+import { deleteJobAndCleanup } from "../services/jobs.js";
 
 // Used to keep login timing the same whether or not the email exists
 let dummyHash
@@ -219,4 +220,78 @@ export const changeVisiblity = async (req, res) => {
     await job.save()
 
     res.json({ success: true, message: job.visible ? 'Job is now visible to candidates' : 'Job hidden from candidates', job })
+}
+
+// ---------- Job edit / delete (ownership enforced by querying with companyId) ----------
+
+const findOwnJob = async (req) => {
+    const id = v.objectId(req.params.id, 'job id')
+    const job = await Job.findOne({ _id: id, companyId: req.company._id })
+    if (!job) throw notFound('Job not found')
+    return job
+}
+
+// Get one of this company's jobs (for the edit form; includes hidden/moderated jobs)
+export const getCompanyJob = async (req, res) => {
+    const job = await findOwnJob(req)
+    res.json({ success: true, job })
+}
+
+// Edit a job. Editing a job that moderators rejected sends it back for review.
+export const updateJob = async (req, res) => {
+    const job = await findOwnJob(req)
+    const fields = parseJobInput(req.body, { partial: true })
+
+    if (Object.keys(fields).length === 0) throw badRequest('Nothing to update')
+
+    Object.assign(job, fields)
+    if (job.moderationStatus === 'rejected') {
+        job.moderationStatus = 'pending'
+    }
+    await job.save()
+
+    res.json({
+        success: true,
+        message: job.moderationStatus === 'pending' ? 'Job updated and sent for review' : 'Job updated',
+        job,
+    })
+}
+
+// Delete a job. Applications are kept (marked as removed) so candidates keep their history.
+export const deleteJob = async (req, res) => {
+    const job = await findOwnJob(req)
+    const result = await deleteJobAndCleanup(job)
+    res.json({ success: true, message: 'Job deleted', ...result })
+}
+
+// ---------- Company profile ----------
+
+export const updateCompanyProfile = async (req, res) => {
+    const company = req.company
+    const updates = {}
+
+    const name = v.text(req.body.name, { field: 'Company name', min: 2, max: 100, required: false })
+    if (name !== undefined) updates.name = name
+
+    for (const [key, label, max] of [['about', 'About', 2000], ['location', 'Location', 100], ['industry', 'Industry', 100]]) {
+        if (req.body[key] !== undefined) {
+            updates[key] = v.text(req.body[key], { field: label, max, required: false }) ?? ''
+        }
+    }
+
+    if (req.body.website !== undefined) {
+        updates.website = req.body.website === '' ? '' : v.url(req.body.website, { field: 'Website' })
+    }
+
+    if (req.file) {
+        if (!isImageBuffer(req.file.buffer)) throw badRequest('Logo must be a PNG, JPG or WebP image')
+        updates.image = await uploadLogo(req.file.buffer)
+    }
+
+    if (Object.keys(updates).length === 0) throw badRequest('Nothing to update')
+
+    Object.assign(company, updates)
+    await company.save()
+
+    res.json({ success: true, message: 'Company profile updated', company: publicCompany(company) })
 }
