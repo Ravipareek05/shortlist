@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment files: never commit secrets. Only *.env.example templates are tracked.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build output
+dist/
+dist-ssr/
+build/
+.vercel/
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Upstream tutorial material kept locally, not part of the product
+How_To_Run_Project.pdf
