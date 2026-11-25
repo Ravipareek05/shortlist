@@ -23,7 +23,8 @@ export const AppContextProvider = (props) => {
 
     const [showRecruiterLogin, setShowRecruiterLogin] = useState(false)
 
-    const [companyToken, setCompanyToken] = useState(null)
+    // Read synchronously so dashboard routes exist on the first render after a refresh
+    const [companyToken, setCompanyToken] = useState(() => localStorage.getItem('companyToken'))
     const [companyData, setCompanyData] = useState(null)
 
     const [userData, setUserData] = useState(null)
@@ -59,6 +60,12 @@ export const AppContextProvider = (props) => {
             }
 
         } catch (error) {
+            // Expired/invalid/suspended session: log the recruiter out
+            if ([401, 403].includes(error?.response?.status)) {
+                localStorage.removeItem('companyToken')
+                setCompanyToken(null)
+                setCompanyData(null)
+            }
             toast.error(error.message)
         }
     }
@@ -106,13 +113,6 @@ export const AppContextProvider = (props) => {
     // Retrive Company Token From LocalStorage
     useEffect(() => {
         fetchJobs()
-
-        const storedCompanyToken = localStorage.getItem('companyToken')
-
-        if (storedCompanyToken) {
-            setCompanyToken(storedCompanyToken)
-        }
-
     }, [])
 
     // Fetch Company Data if Company Token is Available

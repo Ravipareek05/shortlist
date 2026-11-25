@@ -1,32 +1,36 @@
 import express from 'express'
 import { ChangeJobApplicationsStatus, changeVisiblity, getCompanyData, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, registerCompany } from '../controllers/companyController.js'
-import upload from '../config/multer.js'
+import { logoUpload } from '../config/multer.js'
 import { protectCompany } from '../middleware/authMiddleware.js'
+import { asyncHandler } from '../utils/httpError.js'
 
-const router = express.Router()
+export const createCompanyRouter = ({ loginLimiter, registerLimiter }) => {
+    const router = express.Router()
+    const h = asyncHandler
 
-// Register a company
-router.post('/register', upload.single('image'), registerCompany)
+    // Register a company
+    router.post('/register', registerLimiter, logoUpload.single('image'), h(registerCompany))
 
-// Company login
-router.post('/login', loginCompany)
+    // Company login
+    router.post('/login', loginLimiter, h(loginCompany))
 
-// Get company data
-router.get('/company', protectCompany, getCompanyData)
+    // Get company data
+    router.get('/company', protectCompany, h(getCompanyData))
 
-// Post a job
-router.post('/post-job', protectCompany, postJob)
+    // Post a job
+    router.post('/post-job', protectCompany, h(postJob))
 
-// Get Applicants Data of Company
-router.get('/applicants', protectCompany, getCompanyJobApplicants)
+    // Get Applicants Data of Company
+    router.get('/applicants', protectCompany, h(getCompanyJobApplicants))
 
-// Get  Company Job List
-router.get('/list-jobs', protectCompany, getCompanyPostedJobs)
+    // Get Company Job List
+    router.get('/list-jobs', protectCompany, h(getCompanyPostedJobs))
 
-// Change Applcations Status 
-router.post('/change-status', protectCompany, ChangeJobApplicationsStatus)
+    // Change Applications Status
+    router.post('/change-status', protectCompany, h(ChangeJobApplicationsStatus))
 
-// Change Applcations Visiblity 
-router.post('/change-visiblity', protectCompany, changeVisiblity)
+    // Change Job Visibility
+    router.post('/change-visiblity', protectCompany, h(changeVisiblity))
 
-export default router
+    return router
+}

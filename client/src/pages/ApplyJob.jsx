@@ -11,6 +11,7 @@ import Footer from '../components/Footer'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useAuth } from '@clerk/clerk-react'
+import { sanitizeHtml } from '../utils/sanitize'
 
 const ApplyJob = () => {
 
@@ -76,7 +77,7 @@ const ApplyJob = () => {
 
   const checkAlreadyApplied = () => {
 
-    const hasApplied = userApplications.some(item => item.jobId._id === JobData._id)
+    const hasApplied = userApplications.some(item => item.jobId?._id === JobData._id)
     setIsAlreadyApplied(hasApplied)
 
   }
@@ -133,7 +134,7 @@ const ApplyJob = () => {
           <div className='flex flex-col lg:flex-row justify-between items-start'>
             <div className='w-full lg:w-2/3'>
               <h2 className='font-bold text-2xl mb-4'>Job description</h2>
-              <div className='rich-text' dangerouslySetInnerHTML={{ __html: JobData.description }}></div>
+              <div className='rich-text' dangerouslySetInnerHTML={{ __html: sanitizeHtml(JobData.description) }}></div>
               <button onClick={applyHandler} className='bg-blue-600 p-2.5 px-10 text-white rounded mt-10'>{isAlreadyApplied ? 'Already Applied' : 'Apply Now'}</button>
             </div>
             {/* Right Section More Jobs */}

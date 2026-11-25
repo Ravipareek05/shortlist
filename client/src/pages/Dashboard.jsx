@@ -1,5 +1,5 @@
 import { useContext, useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { assets } from '../assets/assets'
 import { AppContext } from '../context/AppContext'
 
@@ -7,7 +7,9 @@ const Dashboard = () => {
 
     const navigate = useNavigate()
 
-    const { companyData, setCompanyData, setCompanyToken } = useContext(AppContext)
+    const location = useLocation()
+
+    const { companyData, setCompanyData, companyToken, setCompanyToken, setShowRecruiterLogin } = useContext(AppContext)
 
     // Function to logout for company
     const logout = () => {
@@ -17,11 +19,16 @@ const Dashboard = () => {
         navigate('/')
     }
 
+    // Logged-out visitors are sent to the recruiter login; the bare /dashboard
+    // path opens Manage Jobs, but deeper paths survive a refresh.
     useEffect(() => {
-        if (companyData) {
-            navigate('/dashboard/manage-jobs')
+        if (!companyToken) {
+            navigate('/')
+            setShowRecruiterLogin(true)
+        } else if (location.pathname.replace(/\/$/, '') === '/dashboard') {
+            navigate('/dashboard/manage-jobs', { replace: true })
         }
-    }, [companyData])
+    }, [companyToken, location.pathname])
 
     return (
         <div className='min-h-screen'>

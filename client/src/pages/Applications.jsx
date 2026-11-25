@@ -4,14 +4,15 @@ import { assets } from '../assets/assets'
 import moment from 'moment'
 import Footer from '../components/Footer'
 import { AppContext } from '../context/AppContext'
-import { useAuth, useUser } from '@clerk/clerk-react'
+import { useAuth, useClerk, useUser } from '@clerk/clerk-react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import Loading from '../components/Loading'
 
 const Applications = () => {
 
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
+  const { openSignIn } = useClerk()
   const { getToken } = useAuth()
 
   const [isEdit, setIsEdit] = useState(false)
@@ -20,6 +21,10 @@ const Applications = () => {
   const { backendUrl, userData, userApplications, fetchUserData, fetchUserApplications } = useContext(AppContext)
 
   const updateResume = async () => {
+
+    if (!resume) {
+      return toast.error('Choose a PDF file first')
+    }
 
     try {
 
@@ -53,6 +58,19 @@ const Applications = () => {
       fetchUserApplications()
     }
   }, [user])
+
+  if (isLoaded && !user) {
+    return (
+      <>
+        <Navbar />
+        <div className='container px-4 min-h-[65vh] mx-auto my-10 flex flex-col items-center justify-center gap-4 text-center'>
+          <h2 className='text-xl font-semibold'>Sign in to see your applications</h2>
+          <button onClick={() => openSignIn()} className='bg-blue-600 text-white px-6 py-2 rounded-full'>Sign in</button>
+        </div>
+        <Footer />
+      </>
+    )
+  }
 
   return userData ? (
     <>
@@ -95,11 +113,11 @@ const Applications = () => {
             {userApplications.map((job, index) => true ? (
               <tr key={index}>
                 <td className='py-3 px-4 flex items-center gap-2 border-b'>
-                  <img className='w-8 h-8' src={job.companyId.image} alt="" />
-                  {job.companyId.name}
+                  {job.companyId?.image && <img className='w-8 h-8' src={job.companyId.image} alt="" />}
+                  {job.companyId?.name ?? 'Company unavailable'}
                 </td>
-                <td className='py-2 px-4 border-b'>{job.jobId.title}</td>
-                <td className='py-2 px-4 border-b max-sm:hidden'>{job.jobId.location}</td>
+                <td className='py-2 px-4 border-b'>{job.jobId?.title ?? job.jobSnapshot?.title ?? 'Job removed'}{(job.jobRemoved || !job.jobId) && <span className='ml-2 text-xs text-gray-400'>(listing removed)</span>}</td>
+                <td className='py-2 px-4 border-b max-sm:hidden'>{job.jobId?.location ?? job.jobSnapshot?.location ?? '—'}</td>
                 <td className='py-2 px-4 border-b max-sm:hidden'>{moment(job.date).format('ll')}</td>
                 <td className='py-2 px-4 border-b'>
                   <span className={`${job.status === 'Accepted' ? 'bg-green-100' : job.status === 'Rejected' ? 'bg-red-100' : 'bg-blue-100'} px-4 py-1.5 rounded`}>

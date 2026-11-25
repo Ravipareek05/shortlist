@@ -1,112 +1,91 @@
 import Job from "../models/Job.js"
 import JobApplication from "../models/JobApplication.js"
-import User from "../models/User.js"
-import { v2 as cloudinary } from "cloudinary"
+import { badRequest, conflict, notFound } from "../utils/httpError.js"
+import * as v from "../utils/validate.js"
+import { isJobPublic } from "../services/jobs.js"
+import { isPdfBuffer } from "../config/multer.js"
+import { uploadResume } from "../services/storage.js"
+
+const publicUser = (user) => ({
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    resume: user.resume ?? '',
+    role: user.role ?? 'candidate',
+    status: user.status ?? 'active',
+    createdAt: user.createdAt,
+})
 
 // Get User Data
 export const getUserData = async (req, res) => {
-
-    const userId = req.auth.userId
-
-    try {
-
-        const user = await User.findById(userId)
-
-        if (!user) {
-            return res.json({ success: false, message: 'User Not Found' })
-        }
-
-        res.json({ success: true, user })
-
-    } catch (error) {
-        res.json({ success: false, message: error.message })
-    }
-
+    res.json({ success: true, user: publicUser(req.user) })
 }
-
 
 // Apply For Job
 export const applyForJob = async (req, res) => {
+    const jobId = v.objectId(req.body.jobId, 'job id')
+    const user = req.user
 
-    const { jobId } = req.body
+    if (!user.resume) {
+        throw badRequest('Upload your resume before applying')
+    }
 
-    const userId = req.auth.userId
+    const jobData = await Job.findById(jobId)
+
+    if (!jobData || !(await isJobPublic(jobData))) {
+        throw notFound('This job is no longer accepting applications')
+    }
+
+    const isAlreadyApplied = await JobApplication.exists({ jobId, userId: user._id })
+
+    if (isAlreadyApplied) {
+        throw conflict('You have already applied to this job')
+    }
 
     try {
-
-        const isAlreadyApplied = await JobApplication.find({ jobId, userId })
-
-        if (isAlreadyApplied.length > 0) {
-            return res.json({ success: false, message: 'Already Applied' })
-        }
-
-        const jobData = await Job.findById(jobId)
-
-        if (!jobData) {
-            return res.json({ success: false, message: 'Job Not Found' })
-        }
-
         await JobApplication.create({
             companyId: jobData.companyId,
-            userId,
+            userId: user._id,
             jobId,
             date: Date.now()
         })
-
-        res.json({ success: true, message: 'Applied Successfully' })
-
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        // Unique index catches double-clicks that slip past the check above
+        if (error?.code === 11000) throw conflict('You have already applied to this job')
+        throw error
     }
 
+    res.status(201).json({ success: true, message: 'Application submitted' })
 }
 
 // Get User Applied Applications Data
 export const getUserJobApplications = async (req, res) => {
+    const applications = await JobApplication.find({ userId: req.user._id })
+        .sort({ date: -1 })
+        .populate('companyId', 'name email image')
+        .populate('jobId', 'title location category level salary jobType visible moderationStatus')
+        .lean()
 
-    try {
-
-        const userId = req.auth.userId
-
-        const applications = await JobApplication.find({ userId })
-            .populate('companyId', 'name email image')
-            .populate('jobId', 'title description location category level salary')
-            .exec()
-
-        if (!applications) {
-            return res.json({ success: false, message: 'No job applications found for this user.' })
-        }
-
-        return res.json({ success: true, applications })
-
-    } catch (error) {
-        res.json({ success: false, message: error.message })
-    }
-
+    res.json({ success: true, applications })
 }
 
 // Update User Resume
 export const updateUserResume = async (req, res) => {
-    try {
+    const resumeFile = req.file
 
-        const userId = req.auth.userId
-
-        const resumeFile = req.file
-
-        const userData = await User.findById(userId)
-
-        if (resumeFile) {
-            const resumeUpload = await cloudinary.uploader.upload(resumeFile.path)
-            userData.resume = resumeUpload.secure_url
-        }
-
-        await userData.save()
-
-        return res.json({ success: true, message: 'Resume Updated' })
-
-    } catch (error) {
-
-        res.json({ success: false, message: error.message })
-
+    if (!resumeFile) {
+        throw badRequest('Choose a PDF file to upload')
     }
+
+    if (!isPdfBuffer(resumeFile.buffer)) {
+        throw badRequest('That file is not a valid PDF')
+    }
+
+    const url = await uploadResume(resumeFile.buffer)
+
+    req.user.resume = url
+    await req.user.save()
+
+    res.json({ success: true, message: 'Resume updated', resume: url })
 }
