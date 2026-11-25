@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useClerk, UserButton } from '@clerk/clerk-react'
+import { useClerk, UserButton } from '@clerk/react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Bookmark, Briefcase, LayoutDashboard, Menu, ShieldCheck, X } from 'lucide-react'
 import Logo from './brand/Logo'

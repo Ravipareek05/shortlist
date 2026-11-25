@@ -1,4 +1,4 @@
-import { UserButton } from '@clerk/clerk-react'
+import { UserButton } from '@clerk/react'
 import { Bookmark, Briefcase, FileText, LayoutDashboard, Search, ShieldCheck } from 'lucide-react'
 import DashboardLayout from '../../components/layout/DashboardLayout'
 import { RequireCandidate } from '../../components/layout/Guards'

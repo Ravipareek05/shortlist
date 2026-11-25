@@ -1,4 +1,4 @@
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/react'
 import { ExternalLink, FileText, Settings } from 'lucide-react'
 import { PageHeader, Avatar } from '../../components/ui/Misc'
 import Button from '../../components/ui/Button'

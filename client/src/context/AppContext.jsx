@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { useAuth, useClerk, useUser } from "@clerk/clerk-react";
+import { useAuth, useClerk, useUser } from "@clerk/react";
 import { companyApi, configureAuth, userApi } from "../lib/api";
 
 // eslint-disable-next-line react-refresh/only-export-components

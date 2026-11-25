@@ -1,4 +1,4 @@
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Lock, ShieldAlert } from 'lucide-react'
 import { useApp } from '../../context/AppContext'

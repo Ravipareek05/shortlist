@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/react'
 import { toast } from 'react-toastify'
 import { ArrowLeft, Briefcase, CalendarDays, CircleCheck, ExternalLink, Globe, Layers, MapPin, UserRound, Wallet } from 'lucide-react'
 import Button from '../components/ui/Button'

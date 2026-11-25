@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/react'
 import { ArrowRight, BarChart3, Bookmark, Briefcase, Building2, Code2, FileCheck2, Layers, ListChecks, Megaphone, Network, PenTool, Send, ShieldCheck, Users } from 'lucide-react'
 import SearchBar from '../components/jobs/SearchBar'
 import JobCard, { JobCardSkeleton } from '../components/jobs/JobCard'
