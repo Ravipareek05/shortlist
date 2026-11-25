@@ -23,6 +23,9 @@ describe('Resume link signing', () => {
         assert.deepEqual(parseCloudinaryUrl(PRIVATE_RESUME), { resourceType: 'raw', type: 'private', publicId: 'shortlist/resumes/resume-abc.pdf', format: '' })
         assert.deepEqual(parseCloudinaryUrl(LEGACY_RESUME), { resourceType: 'image', type: 'upload', publicId: 'legacycv', format: 'pdf' })
         assert.equal(parseCloudinaryUrl('https://evil.example/raw/upload/x.pdf'), null)
+        // Real private URLs include a signature segment before the version
+        assert.deepEqual(parseCloudinaryUrl('https://res.cloudinary.com/testcloud/raw/private/s--AbC_12-x--/v1795601132/shortlist/resumes/resume-abc.pdf'),
+            { resourceType: 'raw', type: 'private', publicId: 'shortlist/resumes/resume-abc.pdf', format: '' })
     })
 
     it('issues expiring signed links (inline or download)', () => {

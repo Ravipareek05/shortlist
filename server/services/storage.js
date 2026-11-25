@@ -39,13 +39,14 @@ export const uploadResume = (buffer) => upload(buffer, {
 const RESUME_LINK_TTL_SECONDS = 10 * 60
 
 // Parses a stored Cloudinary delivery URL, e.g.
-//   https://res.cloudinary.com/<cloud>/raw/private/v123/shortlist/resumes/resume-x.pdf
+//   https://res.cloudinary.com/<cloud>/raw/private/s--SIG--/v123/shortlist/resumes/resume-x.pdf
 //   https://res.cloudinary.com/<cloud>/image/upload/v123/abc.pdf   (resumes from the original app)
 export const parseCloudinaryUrl = (url) => {
     let u
     try { u = new URL(url) } catch { return null }
     if (u.hostname !== 'res.cloudinary.com') return null
-    const m = u.pathname.match(/^\/[^/]+\/(image|raw|video)\/(upload|private|authenticated)\/(?:v\d+\/)?(.+)$/)
+    // Private/authenticated URLs carry a signature segment (s--xxxx--) before the version
+    const m = u.pathname.match(/^\/[^/]+\/(image|raw|video)\/(upload|private|authenticated)\/(?:s--[^/]+--\/)?(?:v\d+\/)?(.+)$/)
     if (!m) return null
     const [, resourceType, type, rest] = m
     const path = decodeURIComponent(rest)
