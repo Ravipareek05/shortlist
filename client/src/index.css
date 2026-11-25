@@ -1,43 +1,117 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-*{
-  font-family: Outfit;
-}
-
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-white text-ink-900 font-sans;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  ::selection {
+    @apply bg-brand-100 text-brand-900;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-::-webkit-scrollbar{
-  display: none;
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .input {
+    @apply block w-full rounded-lg border border-ink-200 bg-white px-3 py-2.5 text-sm text-ink-900 shadow-card
+      placeholder:text-ink-400 transition-colors
+      hover:border-ink-300 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15
+      disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400;
+  }
+
+  .input-error {
+    @apply border-rose-400 focus:border-rose-500 focus:ring-rose-500/15;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink-700;
+  }
+
+  .card {
+    @apply rounded-xl border border-ink-100 bg-white shadow-card;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-brand-600;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-ink-100;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent;
+    animation: shimmer 1.4s infinite;
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
 }
 
-.rich-text { font-size: 15px; color: #7A7B7D; }
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
 
-.rich-text p { margin-bottom: 16px; }
+/* Job description typography (sanitized HTML from the editor) */
+.rich-text { @apply text-[15px] leading-7 text-ink-600; }
+.rich-text > * + * { @apply mt-4; }
+.rich-text h1 { @apply text-2xl font-semibold text-ink-900; }
+.rich-text h2 { @apply text-xl font-semibold text-ink-900; }
+.rich-text h3 { @apply text-lg font-semibold text-ink-900; }
+.rich-text h4 { @apply text-base font-semibold text-ink-900; }
+.rich-text strong, .rich-text b { @apply font-semibold text-ink-800; }
+.rich-text a { @apply font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700; }
+.rich-text ol { @apply ml-5 list-decimal space-y-1.5; }
+.rich-text ul { @apply ml-5 list-disc space-y-1.5; }
+.rich-text li[data-list="bullet"] { list-style-type: disc; }
+.rich-text li[data-list="ordered"] { list-style-type: decimal; }
+.rich-text blockquote { @apply border-l-2 border-ink-200 pl-4 italic; }
+.rich-text pre, .rich-text code { @apply rounded bg-ink-50 px-1.5 py-0.5 font-mono text-[13px]; }
 
-.rich-text h1 { font-size: 36px; font-weight: 800; color: #252525; margin: 32px 0; }
+/* Quill editor themed to match inputs */
+.editor .ql-toolbar.ql-snow { @apply rounded-t-lg border-ink-200 bg-ink-50/60; font-family: inherit; }
+.editor .ql-container.ql-snow { @apply rounded-b-lg border-ink-200 text-[15px]; font-family: inherit; min-height: 220px; }
+.editor .ql-editor { min-height: 220px; @apply leading-7 text-ink-800; }
+.editor .ql-editor.ql-blank::before { @apply not-italic text-ink-400; }
+.editor-error .ql-toolbar.ql-snow, .editor-error .ql-container.ql-snow { @apply border-rose-400; }
 
-.rich-text h2 { font-size: 22px; font-weight: 700; color: #252525; margin: 24px 0; }
-
-.rich-text h3 { font-size: 18px; font-weight: 600; color: #333333; margin: 20px 0; }
-
-.rich-text h4 { font-size: 16px; font-weight: 500; color: #444444; margin: 16px 0; }
-
-.rich-text h5 { font-size: 14px; font-weight: 400; color: #555555; margin: 12px 0; }
-
-.rich-text h6 { font-size: 12px; font-weight: 400; color: #666666; margin: 8px 0; }
-
-.rich-text strong { font-weight: 700; }
-
-.rich-text ol { margin-left: 30px; list-style-type: decimal; }
-
-.rich-text ul { margin-left: 30px; list-style-type: disc; }
-
-.rich-text li { margin-bottom: 8px; }
+/* Toasts */
+.Toastify__toast {
+  @apply rounded-xl border border-ink-100 font-sans text-sm text-ink-800 shadow-elevated;
+}
+.Toastify__toast-icon { @apply w-5; }
+.Toastify__progress-bar--success { @apply bg-emerald-500; }
+.Toastify__progress-bar--error { @apply bg-rose-500; }
+:root {
+  --toastify-color-success: #10b981;
+  --toastify-color-error: #f43f5e;
+  --toastify-color-info: #5260fa;
+  --toastify-font-family: Geist, ui-sans-serif, system-ui, sans-serif;
+}

@@ -1,152 +1,182 @@
-import { createContext, useEffect, useState } from "react";
-import axios from "axios";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth, useClerk, useUser } from "@clerk/clerk-react";
+import { companyApi, configureAuth, userApi } from "../lib/api";
 
-export const AppContext = createContext()
+// eslint-disable-next-line react-refresh/only-export-components
+export const AppContext = createContext(null)
+
+const TOKEN_KEY = 'companyToken'
+
+const readStoredToken = () => {
+    try {
+        return localStorage.getItem(TOKEN_KEY)
+    } catch {
+        return null
+    }
+}
 
 export const AppContextProvider = (props) => {
 
-    const backendUrl = import.meta.env.VITE_BACKEND_URL
-
-    const { user } = useUser()
+    const { user: clerkUser, isLoaded: clerkLoaded, isSignedIn } = useUser()
     const { getToken } = useAuth()
+    const { openSignIn } = useClerk()
 
-    const [searchFilter, setSearchFilter] = useState({
-        title: '',
-        location: ''
+    // ---------- Recruiter session (custom JWT) ----------
+    const [companyToken, setCompanyToken] = useState(() => {
+        const t = readStoredToken()
+        configureAuth({ recruiterToken: t })
+        return t
     })
-
-    const [isSearched, setIsSearched] = useState(false)
-
-    const [jobs, setJobs] = useState([])
-
-    const [showRecruiterLogin, setShowRecruiterLogin] = useState(false)
-
-    // Read synchronously so dashboard routes exist on the first render after a refresh
-    const [companyToken, setCompanyToken] = useState(() => localStorage.getItem('companyToken'))
     const [companyData, setCompanyData] = useState(null)
+    const [companyLoading, setCompanyLoading] = useState(Boolean(companyToken))
 
-    const [userData, setUserData] = useState(null)
-    const [userApplications, setUserApplications] = useState([])
-
-    // Function to Fetch Jobs 
-    const fetchJobs = async () => {
-        try {
-
-            const { data } = await axios.get(backendUrl + '/api/jobs')
-
-            if (data.success) {
-                setJobs(data.jobs)
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            toast.error(error.message)
-        }
-    }
-
-    // Function to Fetch Company Data
-    const fetchCompanyData = async () => {
-        try {
-
-            const { data } = await axios.get(backendUrl + '/api/company/company', { headers: { token: companyToken } })
-
-            if (data.success) {
-                setCompanyData(data.company)
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            // Expired/invalid/suspended session: log the recruiter out
-            if ([401, 403].includes(error?.response?.status)) {
-                localStorage.removeItem('companyToken')
-                setCompanyToken(null)
-                setCompanyData(null)
-            }
-            toast.error(error.message)
-        }
-    }
-
-    // Function to Fetch User Data
-    const fetchUserData = async () => {
-        try {
-
-            const token = await getToken();
-
-            const { data } = await axios.get(backendUrl + '/api/users/user',
-                { headers: { Authorization: `Bearer ${token}` } })
-
-            if (data.success) {
-                setUserData(data.user)
-            } else (
-                toast.error(data.message)
-            )
-
-        } catch (error) {
-            toast.error(error.message)
-        }
-    }
-
-    // Function to Fetch User's Applied Applications
-    const fetchUserApplications = async () => {
-        try {
-
-            const token = await getToken()
-
-            const { data } = await axios.get(backendUrl + '/api/users/applications',
-                { headers: { Authorization: `Bearer ${token}` } }
-            )
-            if (data.success) {
-                setUserApplications(data.applications)
-            } else {
-                toast.error(data.message)
-            }
-
-        } catch (error) {
-            toast.error(error.message)
-        }
-    }
-
-    // Retrive Company Token From LocalStorage
-    useEffect(() => {
-        fetchJobs()
+    const logoutRecruiter = useCallback((reason) => {
+        try { localStorage.removeItem(TOKEN_KEY) } catch { /* storage unavailable */ }
+        configureAuth({ recruiterToken: null })
+        setCompanyToken(null)
+        setCompanyData(null)
+        setCompanyLoading(false)
+        if (typeof reason === 'string' && reason) toast.info(reason)
     }, [])
 
-    // Fetch Company Data if Company Token is Available
+    const loginRecruiter = useCallback((token, company) => {
+        try { localStorage.setItem(TOKEN_KEY, token) } catch { /* storage unavailable */ }
+        configureAuth({ recruiterToken: token })
+        setCompanyToken(token)
+        setCompanyData(company)
+    }, [])
+
     useEffect(() => {
-        if (companyToken) {
-            fetchCompanyData()
-        }
+        configureAuth({
+            clerkTokenGetter: () => getToken(),
+            onRecruiterLogout: (message) => logoutRecruiter(message),
+        })
+    }, [getToken, logoutRecruiter])
+
+    useEffect(() => {
+        if (!companyToken) return
+        let cancelled = false
+        setCompanyLoading(true)
+        companyApi.me()
+            .then((d) => { if (!cancelled) setCompanyData(d.company) })
+            .catch(() => { /* 401/403 handled by the API client (logs out) */ })
+            .finally(() => { if (!cancelled) setCompanyLoading(false) })
+        return () => { cancelled = true }
     }, [companyToken])
 
-    // Fetch User's Applications & Data if User is Logged In
+    // ---------- Candidate session (Clerk) ----------
+    const [userData, setUserData] = useState(null)
+    const [userLoading, setUserLoading] = useState(false)
+    const [userError, setUserError] = useState(null)
+    const [userApplications, setUserApplications] = useState([])
+    const [savedJobIds, setSavedJobIds] = useState(() => new Set())
+
+    const fetchUserData = useCallback(async () => {
+        setUserLoading(true)
+        setUserError(null)
+        try {
+            const d = await userApi.me()
+            setUserData(d.user)
+            return d.user
+        } catch (error) {
+            setUserError(error)
+            return null
+        } finally {
+            setUserLoading(false)
+        }
+    }, [])
+
+    const fetchUserApplications = useCallback(async () => {
+        try {
+            const d = await userApi.applications()
+            setUserApplications(d.applications)
+            return d.applications
+        } catch {
+            return []
+        }
+    }, [])
+
+    const fetchSavedJobIds = useCallback(async () => {
+        try {
+            const d = await userApi.savedJobs()
+            setSavedJobIds(new Set(d.savedJobs.map((s) => String(s.jobId))))
+            return d.savedJobs
+        } catch {
+            return []
+        }
+    }, [])
+
     useEffect(() => {
-        if (user) {
+        if (!clerkLoaded) return
+        if (isSignedIn) {
             fetchUserData()
             fetchUserApplications()
+            fetchSavedJobIds()
+        } else {
+            setUserData(null)
+            setUserApplications([])
+            setSavedJobIds(new Set())
+            setUserError(null)
         }
-    }, [user])
+    }, [clerkLoaded, isSignedIn, clerkUser?.id, fetchUserData, fetchUserApplications, fetchSavedJobIds])
+
+    const appliedJobIds = useMemo(
+        () => new Set(userApplications.map((a) => String(a.jobId?._id ?? a.jobId)).filter(Boolean)),
+        [userApplications]
+    )
+
+    // Optimistic save/unsave; returns the new saved state
+    const toggleSaveJob = useCallback(async (jobId) => {
+        if (!isSignedIn) {
+            openSignIn()
+            return false
+        }
+        const id = String(jobId)
+        const wasSaved = savedJobIds.has(id)
+        setSavedJobIds((prev) => {
+            const next = new Set(prev)
+            if (wasSaved) next.delete(id)
+            else next.add(id)
+            return next
+        })
+        try {
+            if (wasSaved) await userApi.unsaveJob(id)
+            else await userApi.saveJob(id)
+            toast.success(wasSaved ? 'Removed from saved jobs' : 'Job saved')
+            return !wasSaved
+        } catch (error) {
+            setSavedJobIds((prev) => {
+                const next = new Set(prev)
+                if (wasSaved) next.add(id)
+                else next.delete(id)
+                return next
+            })
+            toast.error(error.message)
+            return wasSaved
+        }
+    }, [isSignedIn, openSignIn, savedJobIds])
 
     const value = {
-        setSearchFilter, searchFilter,
-        isSearched, setIsSearched,
-        jobs, setJobs,
-        showRecruiterLogin, setShowRecruiterLogin,
-        companyToken, setCompanyToken,
-        companyData, setCompanyData,
-        backendUrl,
-        userData, setUserData,
-        userApplications, setUserApplications,
-        fetchUserData,
-        fetchUserApplications,
-
+        // recruiter
+        companyToken, companyData, setCompanyData, companyLoading, loginRecruiter, logoutRecruiter,
+        // candidate
+        clerkLoaded, isSignedIn: Boolean(isSignedIn), clerkUser,
+        userData, setUserData, userLoading, userError, fetchUserData,
+        userApplications, fetchUserApplications, appliedJobIds,
+        savedJobIds, fetchSavedJobIds, toggleSaveJob,
+        isAdmin: userData?.role === 'admin',
     }
 
     return (<AppContext.Provider value={value}>
         {props.children}
     </AppContext.Provider>)
 
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useApp = () => {
+    const ctx = useContext(AppContext)
+    if (!ctx) throw new Error('useApp must be used inside AppContextProvider')
+    return ctx
 }
