@@ -11,11 +11,12 @@ import { useApp } from '../../context/AppContext'
 
 const SavedJobs = () => {
     usePageMeta({ title: 'Saved jobs', noindex: true })
-    const { savedJobIds, toggleSaveJob, appliedJobIds } = useApp()
+    const { savedJobIds, savedLoaded, toggleSaveJob, appliedJobIds } = useApp()
     // Refetch whenever the saved set changes (e.g. unsaving from a card)
     const { data, error, loading, reload } = useQuery(() => userApi.savedJobs(), [savedJobIds.size])
 
-    const saved = (data?.savedJobs ?? []).filter((s) => savedJobIds.has(String(s.jobId)))
+    // Hide bookmarks removed in this session, but only once the saved-ID list has loaded
+    const saved = (data?.savedJobs ?? []).filter((s) => !savedLoaded || savedJobIds.has(String(s.jobId)))
     const available = saved.filter((s) => s.available)
     const unavailable = saved.filter((s) => !s.available)
 

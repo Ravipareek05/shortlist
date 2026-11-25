@@ -258,6 +258,7 @@ describe('File uploads', () => {
         assert.equal(res.status, 200)
         assert.match((await User.findById(user._id)).resume, /shortlist\/resumes/)
         assert.equal(uploads.at(-1).options.resource_type, 'raw')
+        assert.equal(uploads.at(-1).options.type, 'private')
     })
 
     it('rejects missing files, non-PDF types, disguised files and oversized files', async () => {

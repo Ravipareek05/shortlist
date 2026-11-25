@@ -9,14 +9,11 @@ import { Select } from '../../components/ui/Field'
 import { Modal } from '../../components/ui/Modal'
 import Button from '../../components/ui/Button'
 import { companyApi } from '../../lib/api'
+import { openSignedLink } from '../../lib/openSignedLink'
 import { APPLICATION_STATUSES } from '../../lib/constants'
 import { formatDate, levelLabel, timeAgo } from '../../lib/format'
 import { useQuery } from '../../hooks/useQuery'
 import { usePageMeta } from '../../hooks/usePageMeta'
-
-// Cloudinary image-type assets (older resumes) can force a download with fl_attachment.
-// Raw files (new resumes) don't support transformations, so they are linked directly.
-const downloadUrl = (url) => (url?.includes('/image/upload/') ? url.replace('/image/upload/', '/image/upload/fl_attachment/') : url)
 
 const StatusSelect = ({ application, onChange, busy }) => (
   <Select
@@ -30,12 +27,15 @@ const StatusSelect = ({ application, onChange, busy }) => (
   </Select>
 )
 
-const ResumeLinks = ({ url, name }) => url ? (
+// Resumes are private; each click fetches a short-lived signed link for this application
+const openResume = (applicationId, download = false) => openSignedLink(() => companyApi.applicationResumeLink(applicationId, download))
+
+const ResumeLinks = ({ application }) => application.userId.hasResume ? (
   <div className='flex items-center gap-1'>
-    <Button href={url} target='_blank' rel='noopener noreferrer' variant='secondary' size='sm' aria-label={`View resume of ${name}`}>
+    <Button onClick={() => openResume(application._id)} variant='secondary' size='sm' aria-label={`View resume of ${application.userId.name}`}>
       <FileText className='h-3.5 w-3.5' aria-hidden='true' />Resume
     </Button>
-    <Button href={downloadUrl(url)} variant='ghost' size='icon-sm' aria-label={`Download resume of ${name}`} download>
+    <Button onClick={() => openResume(application._id, true)} variant='ghost' size='icon-sm' aria-label={`Download resume of ${application.userId.name}`}>
       <Download className='h-4 w-4' aria-hidden='true' />
     </Button>
   </div>
@@ -60,10 +60,10 @@ const CandidateDrawer = ({ candidate, applications, onClose, onStatus, busyId })
 
       <div className='mt-6 rounded-xl border border-ink-100 bg-ink-50/60 p-4'>
         <p className='text-sm font-semibold text-ink-900'>Resume</p>
-        {candidate.resume ? (
+        {candidate.hasResume && theirs[0] ? (
           <div className='mt-3 flex gap-2'>
-            <Button href={candidate.resume} target='_blank' rel='noopener noreferrer' variant='secondary' size='sm'><ExternalLink className='h-3.5 w-3.5' aria-hidden='true' />Open</Button>
-            <Button href={downloadUrl(candidate.resume)} variant='secondary' size='sm' download><Download className='h-3.5 w-3.5' aria-hidden='true' />Download</Button>
+            <Button onClick={() => openResume(theirs[0]._id)} variant='secondary' size='sm'><ExternalLink className='h-3.5 w-3.5' aria-hidden='true' />Open</Button>
+            <Button onClick={() => openResume(theirs[0]._id, true)} variant='secondary' size='sm'><Download className='h-3.5 w-3.5' aria-hidden='true' />Download</Button>
           </div>
         ) : <p className='mt-1 text-sm text-ink-500'>This candidate hasn&apos;t uploaded a resume.</p>}
       </div>
@@ -179,7 +179,7 @@ const ViewApplications = () => {
                             <p className='text-xs text-ink-500'>{a.jobId.location}</p>
                           </td>
                           <td className='px-5 py-3 text-ink-500' title={formatDate(a.date)}>{timeAgo(a.date)}</td>
-                          <td className='px-5 py-3'><ResumeLinks url={a.userId.resume} name={a.userId.name} /></td>
+                          <td className='px-5 py-3'><ResumeLinks application={a} /></td>
                           <td className='px-5 py-3'><StatusSelect application={a} onChange={changeJobApplicationStatus} busy={busyId === a._id} /></td>
                         </tr>
                       ))}
@@ -200,7 +200,7 @@ const ViewApplications = () => {
                         <StatusBadge status={a.status} recruiterView />
                       </button>
                       <div className='mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 pt-3'>
-                        <ResumeLinks url={a.userId.resume} name={a.userId.name} />
+                        <ResumeLinks application={a} />
                         <StatusSelect application={a} onChange={changeJobApplicationStatus} busy={busyId === a._id} />
                       </div>
                     </li>

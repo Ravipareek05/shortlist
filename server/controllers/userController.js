@@ -5,7 +5,7 @@ import * as v from "../utils/validate.js"
 import { COMPANY_PUBLIC_FIELDS, isJobPublic } from "../services/jobs.js"
 import SavedJob from "../models/SavedJob.js"
 import { isPdfBuffer } from "../config/multer.js"
-import { uploadResume } from "../services/storage.js"
+import { resumeAccessUrl, uploadResume } from "../services/storage.js"
 
 const publicUser = (user) => ({
     _id: user._id,
@@ -135,4 +135,11 @@ export const unsaveJob = async (req, res) => {
     const jobId = v.objectId(req.params.jobId, 'job id')
     await SavedJob.deleteOne({ userId: req.user._id, jobId })
     res.json({ success: true, message: 'Removed from saved jobs' })
+}
+
+// Short-lived signed link to the signed-in candidate's own resume
+export const getMyResumeLink = async (req, res) => {
+    const url = resumeAccessUrl(req.user.resume, { download: req.query.download === '1' })
+    if (!url) throw notFound('You have not uploaded a resume yet')
+    res.json({ success: true, url, expiresIn: 600 })
 }

@@ -12,6 +12,7 @@ import { Webhook } from 'svix'
 import connectDB, { disconnectDB } from '../config/db.js'
 import { createApp } from '../app.js'
 import { setUploader } from '../services/storage.js'
+import { v2 as cloudinary } from 'cloudinary'
 import Company from '../models/Company.js'
 import User from '../models/User.js'
 import Job from '../models/Job.js'
@@ -25,13 +26,15 @@ let mongod
 export const uploads = []
 
 export const startDb = async () => {
+    cloudinary.config({ cloud_name: 'testcloud', api_key: 'test-key', api_secret: 'test-secret' })
     mongod = await MongoMemoryServer.create()
     process.env.MONGODB_URI = mongod.getUri()
     await connectDB()
     await Promise.all([Company, User, Job, JobApplication, SavedJob, ModerationLog].map((m) => m.syncIndexes()))
     setUploader(async (buffer, options) => {
         uploads.push({ size: buffer.length, options })
-        return { secure_url: `https://res.cloudinary.test/${options.folder}/${uploads.length}` }
+        const id = options.public_id ?? `asset-${uploads.length}.png`
+        return { secure_url: `https://res.cloudinary.com/testcloud/${options.resource_type}/${options.type ?? 'upload'}/v1/${options.folder}/${id}` }
     })
 }
 

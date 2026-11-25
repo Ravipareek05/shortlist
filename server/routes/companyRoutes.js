@@ -1,5 +1,5 @@
 import express from 'express'
-import { ChangeJobApplicationsStatus, changeVisiblity, deleteJob, getCompanyData, getCompanyJob, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, registerCompany, updateCompanyProfile, updateJob } from '../controllers/companyController.js'
+import { ChangeJobApplicationsStatus, getApplicationResumeLink, changeVisiblity, deleteJob, getCompanyData, getCompanyJob, getCompanyJobApplicants, getCompanyPostedJobs, loginCompany, postJob, registerCompany, updateCompanyProfile, updateJob } from '../controllers/companyController.js'
 import { logoUpload } from '../config/multer.js'
 import { protectCompany } from '../middleware/authMiddleware.js'
 import { asyncHandler } from '../utils/httpError.js'
@@ -30,6 +30,9 @@ export const createCompanyRouter = ({ loginLimiter, registerLimiter }) => {
 
     // Get Applicants Data of Company
     router.get('/applicants', protectCompany, h(getCompanyJobApplicants))
+
+    // Signed link to an applicant's resume
+    router.get('/applications/:id/resume', protectCompany, h(getApplicationResumeLink))
 
     // Get Company Job List
     router.get('/list-jobs', protectCompany, h(getCompanyPostedJobs))

@@ -5,6 +5,8 @@ import Button from '../../components/ui/Button'
 import { AccountBadge } from '../../components/ui/Badge'
 import ResumeUploader from '../../components/candidate/ResumeUploader'
 import { usePageMeta } from '../../hooks/usePageMeta'
+import { userApi } from '../../lib/api'
+import { openSignedLink } from '../../lib/openSignedLink'
 import { formatDate } from '../../lib/format'
 import { useApp } from '../../context/AppContext'
 
@@ -58,7 +60,7 @@ const CandidateProfile = () => {
                                 <p className='text-sm font-medium text-ink-900'>Current resume</p>
                                 <p className='text-xs text-ink-500'>PDF on file</p>
                             </div>
-                            <Button href={userData.resume} target='_blank' rel='noopener noreferrer' variant='secondary' size='sm'>
+                            <Button onClick={() => openSignedLink(() => userApi.resumeLink())} variant='secondary' size='sm'>
                                 View <ExternalLink className='h-3 w-3' aria-hidden='true' />
                             </Button>
                         </div>

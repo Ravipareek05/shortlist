@@ -8,7 +8,7 @@ import { badRequest, conflict, forbidden, notFound } from "../utils/httpError.js
 import * as v from "../utils/validate.js";
 import { sanitizeDescription, htmlToText } from "../utils/sanitize.js";
 import { isImageBuffer } from "../config/multer.js";
-import { uploadLogo } from "../services/storage.js";
+import { resumeAccessUrl, uploadLogo } from "../services/storage.js";
 import { deleteJobAndCleanup } from "../services/jobs.js";
 
 // Used to keep login timing the same whether or not the email exists
@@ -149,6 +149,14 @@ export const getCompanyJobApplicants = async (req, res) => {
         .populate('userId', 'name image resume email')
         .populate('jobId', 'title location category level salary jobType')
         .lean()
+
+    // Never expose stored file URLs; resumes are opened through a signed-link endpoint
+    for (const a of applications) {
+        if (a.userId) {
+            a.userId.hasResume = Boolean(a.userId.resume)
+            delete a.userId.resume
+        }
+    }
 
     res.json({ success: true, applications })
 }
@@ -294,4 +302,14 @@ export const updateCompanyProfile = async (req, res) => {
     await company.save()
 
     res.json({ success: true, message: 'Company profile updated', company: publicCompany(company) })
+}
+
+// Short-lived signed link to an applicant's resume (only for this company's applications)
+export const getApplicationResumeLink = async (req, res) => {
+    const id = v.objectId(req.params.id, 'application id')
+    const application = await JobApplication.findOne({ _id: id, companyId: req.company._id }).populate('userId', 'resume')
+    if (!application) throw notFound('Application not found')
+    const url = resumeAccessUrl(application.userId?.resume, { download: req.query.download === '1' })
+    if (!url) throw notFound('This candidate has not uploaded a resume')
+    res.json({ success: true, url, expiresIn: 600 })
 }

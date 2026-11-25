@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import { EmptyState } from '../../components/ui/Feedback'
 import { adminApi } from '../../lib/api'
+import { openSignedLink } from '../../lib/openSignedLink'
 import { formatDate } from '../../lib/format'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { ListBody, SearchInput, Table, useAdminList } from './adminShared'
@@ -69,7 +70,7 @@ const AdminAccounts = ({ kind }) => {
                                 {isUsers ? (
                                     <>
                                         <td className='px-4 py-3 tabular-nums text-ink-700'>{r.applications}</td>
-                                        <td className='px-4 py-3'>{r.resume ? <a href={r.resume} target='_blank' rel='noopener noreferrer' className='inline-flex items-center gap-1 text-brand-600 hover:underline'>View <ExternalLink className='h-3 w-3' aria-hidden='true' /></a> : <span className='text-ink-400'>None</span>}</td>
+                                        <td className='px-4 py-3'>{r.hasResume ? <button type='button' onClick={() => openSignedLink(() => adminApi.userResumeLink(r._id))} className='inline-flex items-center gap-1 text-brand-600 hover:underline'>View <ExternalLink className='h-3 w-3' aria-hidden='true' /></button> : <span className='text-ink-400'>None</span>}</td>
                                     </>
                                 ) : (
                                     <>

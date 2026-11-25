@@ -7,6 +7,7 @@ import { ACCOUNT_STATUSES, APPLICATION_STATUSES, MODERATION_STATUSES } from "../
 import { badRequest, forbidden, notFound } from "../utils/httpError.js"
 import * as v from "../utils/validate.js"
 import { deleteJobAndCleanup } from "../services/jobs.js"
+import { resumeAccessUrl } from "../services/storage.js"
 
 // Every handler here runs behind requireUser + requireAdmin (see routes/adminRoutes.js).
 
@@ -97,7 +98,7 @@ export const listUsers = async (req, res) => {
 
     res.json({
         success: true,
-        users: users.map((u) => ({ ...u, role: u.role ?? 'candidate', status: u.status ?? 'active', applications: byUser.get(u._id) ?? 0 })),
+        users: users.map(({ resume, ...u }) => ({ ...u, hasResume: Boolean(resume), role: u.role ?? 'candidate', status: u.status ?? 'active', applications: byUser.get(u._id) ?? 0 })),
         pagination: v.paginationMeta(page, limit, total),
     })
 }
@@ -121,6 +122,14 @@ export const setUserStatus = async (req, res) => {
 
     await log(req, { action: status === 'suspended' ? 'user.suspend' : 'user.reactivate', targetType: 'user', targetId: user._id, targetLabel: `${user.name} <${user.email}>`, reason })
     res.json({ success: true, message: status === 'suspended' ? 'User suspended' : 'User reactivated', user })
+}
+
+export const getUserResumeLink = async (req, res) => {
+    const user = await User.findById(v.text(req.params.id, { field: 'User id', max: 100 })).select('resume')
+    if (!user) throw notFound('User not found')
+    const url = resumeAccessUrl(user.resume, { download: req.query.download === '1' })
+    if (!url) throw notFound('This user has not uploaded a resume')
+    res.json({ success: true, url, expiresIn: 600 })
 }
 
 // ---------- Recruiters / companies ----------

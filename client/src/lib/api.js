@@ -83,6 +83,7 @@ export const userApi = {
         form.append('resume', file)
         return data(http.post('/api/users/update-resume', form))
     },
+    resumeLink: (download = false) => data(http.get(`/api/users/resume${download ? '?download=1' : ''}`)),
     savedJobs: () => data(http.get('/api/users/saved-jobs')),
     saveJob: (jobId) => data(http.post('/api/users/saved-jobs', { jobId })),
     unsaveJob: (jobId) => data(http.delete(`/api/users/saved-jobs/${jobId}`)),
@@ -112,6 +113,7 @@ export const companyApi = {
     deleteJob: (id) => data(http.delete(`/api/company/jobs/${id}`)),
     toggleVisibility: (id) => data(http.post('/api/company/change-visiblity', { id })),
     applicants: (params) => data(http.get(`/api/company/applicants${toQuery(params)}`)),
+    applicationResumeLink: (applicationId, download = false) => data(http.get(`/api/company/applications/${applicationId}/resume${download ? '?download=1' : ''}`)),
     setApplicationStatus: (id, status) => data(http.post('/api/company/change-status', { id, status })),
 }
 
@@ -119,6 +121,7 @@ export const adminApi = {
     stats: () => data(http.get('/api/admin/stats')),
     users: (params) => data(http.get(`/api/admin/users${toQuery(params)}`)),
     setUserStatus: (id, status, reason) => data(http.patch(`/api/admin/users/${encodeURIComponent(id)}/status`, { status, reason })),
+    userResumeLink: (id, download = false) => data(http.get(`/api/admin/users/${encodeURIComponent(id)}/resume${download ? '?download=1' : ''}`)),
     companies: (params) => data(http.get(`/api/admin/companies${toQuery(params)}`)),
     setCompanyStatus: (id, status, reason) => data(http.patch(`/api/admin/companies/${id}/status`, { status, reason })),
     jobs: (params) => data(http.get(`/api/admin/jobs${toQuery(params)}`)),

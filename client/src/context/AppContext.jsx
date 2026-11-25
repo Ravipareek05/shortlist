@@ -71,6 +71,7 @@ export const AppContextProvider = (props) => {
     const [userError, setUserError] = useState(null)
     const [userApplications, setUserApplications] = useState([])
     const [savedJobIds, setSavedJobIds] = useState(() => new Set())
+    const [savedLoaded, setSavedLoaded] = useState(false)
 
     const fetchUserData = useCallback(async () => {
         setUserLoading(true)
@@ -101,6 +102,7 @@ export const AppContextProvider = (props) => {
         try {
             const d = await userApi.savedJobs()
             setSavedJobIds(new Set(d.savedJobs.map((s) => String(s.jobId))))
+            setSavedLoaded(true)
             return d.savedJobs
         } catch {
             return []
@@ -117,6 +119,7 @@ export const AppContextProvider = (props) => {
             setUserData(null)
             setUserApplications([])
             setSavedJobIds(new Set())
+            setSavedLoaded(false)
             setUserError(null)
         }
     }, [clerkLoaded, isSignedIn, clerkUser?.id, fetchUserData, fetchUserApplications, fetchSavedJobIds])
@@ -164,7 +167,7 @@ export const AppContextProvider = (props) => {
         clerkLoaded, isSignedIn: Boolean(isSignedIn), clerkUser,
         userData, setUserData, userLoading, userError, fetchUserData,
         userApplications, fetchUserApplications, appliedJobIds,
-        savedJobIds, fetchSavedJobIds, toggleSaveJob,
+        savedJobIds, savedLoaded, fetchSavedJobIds, toggleSaveJob,
         isAdmin: userData?.role === 'admin',
     }
 
